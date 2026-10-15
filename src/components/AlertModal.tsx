@@ -176,6 +176,39 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, onClose, timelin
             </div>
           </div>
 
+          {/* Real Email Delivery & Browser Sandbox Notice */}
+          <div
+            style={{
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: '6px',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              fontSize: '0.82rem',
+              color: '#cbd5e1',
+              lineHeight: 1.5,
+            }}
+          >
+            <div style={{ color: '#fbbf24', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>ℹ️</span> Why isn't an email automatically arriving in your inbox?
+            </div>
+            <p style={{ margin: '0 0 8px 0' }}>
+              Modern web browsers execute in a secure sandbox and cannot directly open raw TCP socket connections to external mail servers (port 25 / 587) without a paid server-side relay daemon (e.g., SendGrid, AWS SES).
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ color: '#ffffff', fontWeight: 600 }}>To send a real email to your inbox right now:</span>
+              {summary && lastDispatched && (
+                <a
+                  href={AlertService.getMailtoUrl(lastDispatched, summary)}
+                  className="btn btn-cyber-primary"
+                  style={{ fontSize: '0.78rem', padding: '4px 10px', textDecoration: 'none' }}
+                >
+                  <span>✉️ Open &amp; Send in Gmail / Outlook</span>
+                </a>
+              )}
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
             <button
@@ -183,8 +216,19 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, onClose, timelin
               disabled={isSending || !timelineResult}
               className="btn btn-cyber-primary"
             >
-              <span>{isSending ? '⏳ Dispatching Alert via SMTP...' : '⚡ Dispatch Incident Alert Email Now'}</span>
+              <span>{isSending ? '⏳ Dispatching Alert via SOC Engine...' : '⚡ Generate Incident Alert'}</span>
             </button>
+
+            {lastDispatched && summary && (
+              <a
+                href={AlertService.getMailtoUrl(lastDispatched, summary)}
+                className="btn btn-cyber-outline"
+                style={{ borderColor: 'var(--cyber-green)', color: 'var(--cyber-green)', textDecoration: 'none' }}
+                title="Open your device default email client with recipient and incident alert pre-filled"
+              >
+                <span>✉️ Send Real Email (Mail Client)</span>
+              </a>
+            )}
 
             {lastDispatched && (
               <>
@@ -192,13 +236,21 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, onClose, timelin
                   onClick={() => setShowPreview(!showPreview)}
                   className="btn btn-cyber-outline"
                 >
-                  <span>{showPreview ? 'Hide HTML Preview' : 'Preview Dispatched Email'}</span>
+                  <span>{showPreview ? 'Hide HTML Preview' : 'Preview Formatted Alert'}</span>
+                </button>
+                <button
+                  onClick={() => AlertService.downloadAlertEml(lastDispatched)}
+                  className="btn btn-cyber-outline btn-sm"
+                  title="Download standard RFC-822 .eml file that opens in Outlook/Apple Mail"
+                >
+                  <span>📥 Download .EML Email</span>
                 </button>
                 <button
                   onClick={() => AlertService.downloadAlertHtml(lastDispatched)}
                   className="btn btn-cyber-green btn-sm"
+                  title="Download HTML alert template"
                 >
-                  <span>📥 Save Alert (.html)</span>
+                  <span>📥 Save .HTML</span>
                 </button>
               </>
             )}

@@ -3,6 +3,11 @@ import { WindowsEvent, SystemConfig, TimelineResult, InvestigationSummary } from
 import { TelemetryService } from '../services/telemetryService';
 import { TimelineReconstructionService } from '../services/timelineService';
 import { ForensicReportService } from '../services/reportService';
+import {
+  downloadSampleIncidentJson,
+  downloadSampleIncidentCsv,
+  getSampleAttackEvents,
+} from '../services/demoData';
 import { LogModal } from './LogModal';
 import { AlertModal } from './AlertModal';
 import { CloudImportModal } from './CloudImportModal';
@@ -11,9 +16,16 @@ import { PipelineTestModal } from './PipelineTestModal';
 interface DashboardProps {
   config: SystemConfig;
   onUpdateConfig: (updated: SystemConfig) => void;
+  isExternalUploadOpen?: boolean;
+  onCloseExternalUpload?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  config,
+  onUpdateConfig,
+  isExternalUploadOpen,
+  onCloseExternalUpload,
+}) => {
   // Filters
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(config.default_time_range || '-24h');
@@ -45,6 +57,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
   const [isCloudModalOpen, setIsCloudModalOpen] = useState<boolean>(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState<boolean>(false);
 
+  // Active upload modal state
+  const isUploadModalVisible = isCloudModalOpen || !!isExternalUploadOpen;
+  const handleCloseUploadModal = () => {
+    setIsCloudModalOpen(false);
+    if (onCloseExternalUpload) onCloseExternalUpload();
+  };
+
   // Initial Data Load
   useEffect(() => {
     executeFetchLogs();
@@ -75,13 +94,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
     setEvents(importedEvents);
     setCurrentSourceLabel(sourceLabel);
     setQueryLatency(1.2);
-    setSearchQuerySyntax(`[CLOUD INGESTION EMULATION]: Imported ${importedEvents.length} records from ${sourceLabel}`);
+    setSearchQuerySyntax(`[INGESTION PIPELINE]: Loaded ${importedEvents.length} records from ${sourceLabel}`);
 
     const timeline = TimelineReconstructionService.reconstructAttackTimeline(importedEvents, timelineOrder === 'desc');
     setTimelineResult(timeline);
 
     const summary = ForensicReportService.generateInvestigationSummary(timeline, true);
     setInvestigationSummary(summary);
+  };
+
+  const handleLoadSampleAttackDataset = () => {
+    const sample = getSampleAttackEvents();
+    handleCloudImport(sample, 'Verified Multi-Stage Attack Dataset (APT29 Emulation)');
   };
 
   const handleReconstructTimeline = () => {
@@ -145,22 +169,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
       <div className="dashboard-header">
         <div>
           <h2 className="page-title">Forensic Security Operations Dashboard</h2>
-          <p className="page-subtitle">Windows Security Log Analysis, Multi-Cloud Ingestion &amp; Attack Reconstruction</p>
+          <p className="page-subtitle">Windows Security Log Analysis, MITRE ATT&amp;CK Mapping &amp; Incident Reconstruction</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
+            onClick={() => setIsCloudModalOpen(true)}
+            className="btn btn-cyber-outline"
+            title="Import custom forensic CSV/JSON or pre-built cloud logs"
+          >
+            <span>📁 Upload Logs &amp; Datasets</span>
+          </button>
+          <button
             onClick={() => setIsTestModalOpen(true)}
-            className="btn btn-cyber-primary"
+            className="btn btn-cyber-outline"
             title="Execute automated end-to-end test suite"
           >
             <span>🧪 Verify Workflow (E2E Test)</span>
-          </button>
-          <button
-            onClick={() => setIsCloudModalOpen(true)}
-            className="btn btn-cyber-outline"
-            title="Import AWS, Azure, GCP, or custom JSON/CSV logs"
-          >
-            <span>☁️ Cloud Log Integration</span>
           </button>
           <button
             onClick={() => setIsAlertModalOpen(true)}
@@ -175,7 +199,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
             className="btn btn-cyber-outline"
             title="Reload the local simulated forensic event stream"
           >
-            <span>{isQuerying ? '⏳ Refreshing...' : '🔄 Reload Telemetry Stream'}</span>
+            <span>{isQuerying ? '⏳ Refreshing...' : '🔄 Reload Stream'}</span>
           </button>
         </div>
       </div>
@@ -189,26 +213,66 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
           padding: '0.85rem 1.2rem',
           marginBottom: '1.5rem',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
           gap: '0.8rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '1.3rem' }}>🛡️</span>
-          <div>
-            <strong style={{ color: 'var(--cyber-cyan)', fontSize: '0.9rem' }}>
-              Standalone Offline Forensic Telemetry &bull; Zero External Connections Required
-            </strong>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '2px 0 0' }}>
-              External Splunk connections have been completely removed. All log ingestion, deterministic timeline reconstruction, MITRE ATT&amp;CK correlation, email alerts, and court-defensible PDF reports operate 100% offline using simulated and cloud telemetry.
-            </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>🛡️</span>
+            <div>
+              <strong style={{ color: 'var(--cyber-cyan)', fontSize: '0.9rem' }}>
+                Standalone Offline Forensic Engine &bull; Zero External Splunk Connections Required
+              </strong>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '2px 0 0' }}>
+                All Splunk licensing connections have been completely removed. Ingestion, deterministic timeline reconstruction, MITRE ATT&amp;CK correlation, email alerts, and court-defensible PDF reports operate 100% offline.
+              </p>
+            </div>
           </div>
+          <span className="status-pill success" style={{ fontSize: '0.72rem' }}>
+            Standalone Forensic Engine
+          </span>
         </div>
-        <span className="status-pill success" style={{ fontSize: '0.72rem' }}>
-          100% Offline Mode
-        </span>
+
+        {/* Forensic Quick Actions Toolbar */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            paddingTop: '0.5rem',
+            borderTop: '1px solid rgba(0, 240, 255, 0.15)',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ fontSize: '0.78rem', color: 'var(--cyber-cyan)', fontWeight: 600 }}>
+            ⚡ Forensic Simulation Quick-Actions:
+          </span>
+          <button
+            onClick={handleLoadSampleAttackDataset}
+            className="btn btn-cyber-primary"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            title="Load the 9-stage verified APT29 breach scenario with 1 click"
+          >
+            <span>⚡ 1-Click Load Attack Dataset</span>
+          </button>
+          <button
+            onClick={() => downloadSampleIncidentJson()}
+            className="btn btn-cyber-outline"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            title="Download sample incident JSON file"
+          >
+            <span>📥 Download Sample (.JSON)</span>
+          </button>
+          <button
+            onClick={() => downloadSampleIncidentCsv()}
+            className="btn btn-cyber-outline"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            title="Download sample incident CSV file"
+          >
+            <span>📥 Download Sample (.CSV)</span>
+          </button>
+        </div>
       </div>
 
       {/* Diagnostics / Telemetry Overview Cards */}
@@ -1030,10 +1094,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ config, onUpdateConfig }) 
         onClose={() => setModalOpen(false)}
       />
 
-      {/* Cloud Log Integration Modal */}
+      {/* Security Log Integration & Custom File Upload Modal */}
       <CloudImportModal
-        isOpen={isCloudModalOpen}
-        onClose={() => setIsCloudModalOpen(false)}
+        isOpen={isUploadModalVisible}
+        onClose={handleCloseUploadModal}
         onImportEvents={handleCloudImport}
       />
 

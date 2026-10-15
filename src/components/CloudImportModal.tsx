@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { WindowsEvent, CloudLogSource } from '../types';
-import { generateCloudEvents, parseCustomUploadedLogs } from '../services/demoData';
+import {
+  generateCloudEvents,
+  parseCustomUploadedLogs,
+  downloadSampleIncidentJson,
+  downloadSampleIncidentCsv,
+  getSampleAttackEvents,
+} from '../services/demoData';
 
 interface CloudImportModalProps {
   isOpen: boolean;
@@ -59,6 +65,12 @@ export const CloudImportModal: React.FC<CloudImportModalProps> = ({ isOpen, onCl
     }
   };
 
+  const handleLoadSampleBenchmarkDataset = () => {
+    const sampleEvents = getSampleAttackEvents();
+    onImportEvents(sampleEvents, 'Verified Multi-Stage Attack Dataset (APT29 Scenario)');
+    onClose();
+  };
+
   return (
     <div
       className="modal-overlay"
@@ -66,10 +78,10 @@ export const CloudImportModal: React.FC<CloudImportModalProps> = ({ isOpen, onCl
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content" style={{ maxWidth: '800px' }}>
+      <div className="modal-content" style={{ maxWidth: '840px' }}>
         <div className="modal-header">
           <h3 style={{ color: 'var(--cyber-cyan)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>☁️ Cloud Security Log Integration & Custom Import</span>
+            <span>☁️ Security Log Ingestion &amp; Custom File Upload</span>
           </h3>
           <button className="modal-close-btn" onClick={onClose}>
             &times;
@@ -78,13 +90,120 @@ export const CloudImportModal: React.FC<CloudImportModalProps> = ({ isOpen, onCl
 
         <div className="modal-body" style={{ maxHeight: '78vh' }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.2rem', lineHeight: 1.6 }}>
-            Ingest real or simulated cloud security telemetry from AWS, Azure Entra ID, GCP, or upload your own forensic log files (JSON / CSV). Zero external paid licenses required.
+            Ingest real or simulated cloud security telemetry from AWS, Azure Entra ID, GCP, or upload your own forensic log files (JSON / CSV). Zero external paid Splunk licenses required.
           </p>
 
-          {/* Tab 1: Pre-Configured Cloud Intrusion Scenarios */}
+          {/* Standard Benchmark Dataset Box */}
+          <div
+            style={{
+              background: 'rgba(0, 240, 255, 0.07)',
+              border: '1px solid var(--cyber-cyan)',
+              borderRadius: '6px',
+              padding: '1.2rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--cyber-cyan)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎯</span> Standard Forensic Benchmark Dataset Pack:
+              </div>
+              <span className="status-pill success" style={{ fontSize: '0.72rem' }}>
+                Ready For Ingestion
+              </span>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '1rem' }}>
+              Test dynamic parsing with high-fidelity telemetry. You can download the verified APT29 emulation incident log to your computer, or load it with 1 click:
+            </p>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleLoadSampleBenchmarkDataset}
+                className="btn btn-cyber-primary"
+                style={{ fontSize: '0.82rem' }}
+              >
+                <span>⚡ Load Sample Attack Dataset (1-Click)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadSampleIncidentJson()}
+                className="btn btn-cyber-outline"
+                style={{ fontSize: '0.82rem' }}
+                title="Download JSON format security log file to your computer"
+              >
+                <span>📥 Download Dataset (.JSON)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadSampleIncidentCsv()}
+                className="btn btn-cyber-outline"
+                style={{ fontSize: '0.82rem' }}
+                title="Download CSV format security log file to your computer"
+              >
+                <span>📥 Download Dataset (.CSV)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 1: Custom Log File Drag & Drop / Upload */}
           <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '1.2rem', marginBottom: '1.5rem' }}>
             <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.8rem' }}>
-              Select Cloud Scenario / Provider Dataset:
+              Upload Your Own Custom Forensic Log File:
+            </div>
+
+            <div
+              style={{
+                border: '2px dashed var(--border-glow)',
+                borderRadius: '6px',
+                padding: '1.5rem',
+                textAlign: 'center',
+                background: 'rgba(0,0,0,0.2)',
+                marginBottom: '1rem',
+              }}
+            >
+              <input
+                type="file"
+                id="file-log-upload"
+                accept=".json,.csv,.txt,.log"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <label
+                htmlFor="file-log-upload"
+                className="btn btn-cyber-outline"
+                style={{ cursor: 'pointer', marginBottom: '0.5rem' }}
+              >
+                📁 Choose File to Upload (JSON or CSV)
+              </label>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {uploadedFileName ? `Selected: ${uploadedFileName}` : 'Accepts Windows Event Log CSVs, SIEM JSON dumps, and raw audit exports'}
+              </p>
+            </div>
+
+            {uploadError && (
+              <div style={{ color: '#f87171', fontSize: '0.82rem', marginBottom: '0.8rem' }}>
+                [!] {uploadError}
+              </div>
+            )}
+
+            {parsedPreview && (
+              <div style={{ marginBottom: '1rem', background: 'rgba(16, 185, 129, 0.08)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <div style={{ color: 'var(--cyber-green)', fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+                  ✓ Successfully recognized {parsedPreview.length} forensic records from {uploadedFileName}!
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                  Target Accounts: {Array.from(new Set(parsedPreview.map((e) => e.username))).join(', ')} &bull; Source IPs: {Array.from(new Set(parsedPreview.map((e) => e.source_ip))).join(', ')}
+                </div>
+                <button onClick={handleApplyUpload} className="btn btn-cyber-green">
+                  <span>🚀 Ingest &amp; Reconstruct Timeline ({parsedPreview.length} Events)</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Pre-Configured Cloud Intrusion Scenarios */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '1.2rem' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.8rem' }}>
+              Or Ingest Pre-Configured Cloud Provider Scenarios:
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.2rem' }}>
@@ -141,64 +260,12 @@ export const CloudImportModal: React.FC<CloudImportModalProps> = ({ isOpen, onCl
             </div>
 
             <button onClick={handleImportPrebuilt} className="btn btn-cyber-primary">
-              <span>⚡ Load Cloud Security Telemetry</span>
+              <span>⚡ Load Selected Cloud Telemetry</span>
             </button>
-          </div>
-
-          {/* Tab 2: Custom Log File Drag & Drop / Upload */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '1.2rem' }}>
-            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.8rem' }}>
-              Import Custom Log File (JSON / CSV):
-            </div>
-
-            <div
-              style={{
-                border: '2px dashed var(--border-glow)',
-                borderRadius: '6px',
-                padding: '1.5rem',
-                textAlign: 'center',
-                background: 'rgba(0,0,0,0.2)',
-                marginBottom: '1rem',
-              }}
-            >
-              <input
-                type="file"
-                id="file-log-upload"
-                accept=".json,.csv,.txt,.log"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-              <label
-                htmlFor="file-log-upload"
-                className="btn btn-cyber-outline"
-                style={{ cursor: 'pointer', marginBottom: '0.5rem' }}
-              >
-                📁 Choose Log File
-              </label>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {uploadedFileName ? `Selected: ${uploadedFileName}` : 'Supports WinEventLog, AWS CloudTrail JSON, CSV dumps'}
-              </p>
-            </div>
-
-            {uploadError && (
-              <div style={{ color: '#f87171', fontSize: '0.82rem', marginBottom: '0.8rem' }}>
-                [!] {uploadError}
-              </div>
-            )}
-
-            {parsedPreview && (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ color: 'var(--cyber-green)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
-                  ✓ Successfully recognized {parsedPreview.length} forensic records from {uploadedFileName}!
-                </div>
-                <button onClick={handleApplyUpload} className="btn btn-cyber-green">
-                  <span>🚀 Ingest & Reconstruct Timeline ({parsedPreview.length} Events)</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+

@@ -12,6 +12,7 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'settings'>('dashboard');
   const [config, setConfig] = useState<SystemConfig>(() => TelemetryService.getConfig());
   const [isHealthOpen, setIsHealthOpen] = useState<boolean>(false);
+  const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
 
   const handleUpdateConfig = (newConfig: SystemConfig) => {
     setConfig(newConfig);
@@ -23,13 +24,22 @@ export const App: React.FC = () => {
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         onOpenHealth={() => setIsHealthOpen(true)}
+        onOpenUpload={() => {
+          setCurrentTab('dashboard');
+          setIsUploadOpen(true);
+        }}
       />
 
       <Banner />
 
       <main className="container">
         {currentTab === 'dashboard' ? (
-          <Dashboard config={config} onUpdateConfig={handleUpdateConfig} />
+          <Dashboard
+            config={config}
+            onUpdateConfig={handleUpdateConfig}
+            isExternalUploadOpen={isUploadOpen}
+            onCloseExternalUpload={() => setIsUploadOpen(false)}
+          />
         ) : (
           <Settings
             config={config}

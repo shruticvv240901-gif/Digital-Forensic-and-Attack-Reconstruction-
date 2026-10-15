@@ -1,6 +1,6 @@
 {
   "name": "AI Attack Timeline Reconstruction",
-  "description": "AI-assisted automated attack timeline reconstruction and digital forensic reporting using Splunk Enterprise Windows Security logs.",
+  "description": "Automated attack timeline reconstruction, MITRE ATT&CK kill-chain mapping, and digital forensic reporting system for cybersecurity incident response.",
   "requestFeedback": false,
   "userFacing": true,
   "capabilities": [

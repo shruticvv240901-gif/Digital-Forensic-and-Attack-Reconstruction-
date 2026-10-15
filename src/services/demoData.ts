@@ -704,3 +704,246 @@ export function filterDemoEvents(
   // 3. Apply limit
   return filtered.slice(0, limit);
 }
+
+/**
+ * Generates a verified multi-stage attack incident benchmark dataset based on APT29 adversary techniques.
+ */
+export function getSampleAttackEvents(): WindowsEvent[] {
+  const baseTime = new Date();
+  const formatTime = (minusMinutes: number) => {
+    const d = new Date(baseTime.getTime() - minusMinutes * 60 * 1000);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  return [
+    {
+      timestamp: formatTime(60),
+      event_id: '4625',
+      event_name: 'An account failed to log on (Brute Force Phase)',
+      category: 'Logon / Authentication',
+      severity: 'Medium',
+      mitre_tactic: 'Credential Access',
+      mitre_technique: 'T1110.001 (Password Guessing)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'RemoteInteractive (RDP)',
+      logon_type_code: '10',
+      message: 'SubStatus: 0xC000006A (Bad Password). Multiple repeated authentication failures detected from external IP.',
+      raw_snippet: 'EventID=4625 AccountName=backup_admin SourceIP=192.168.1.55 FailureReason=Unknown username or bad password LogonType=10',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(58),
+      event_id: '4625',
+      event_name: 'An account failed to log on (Brute Force Phase)',
+      category: 'Logon / Authentication',
+      severity: 'Medium',
+      mitre_tactic: 'Credential Access',
+      mitre_technique: 'T1110.001 (Password Guessing)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'RemoteInteractive (RDP)',
+      logon_type_code: '10',
+      message: 'SubStatus: 0xC000006A (Bad Password). Consecutive password attack iteration.',
+      raw_snippet: 'EventID=4625 AccountName=backup_admin SourceIP=192.168.1.55 FailureReason=Bad Password LogonType=10',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(55),
+      event_id: '4624',
+      event_name: 'An account was successfully logged on (Breach Initial Access)',
+      category: 'Logon / Authentication',
+      severity: 'High',
+      mitre_tactic: 'Initial Access',
+      mitre_technique: 'T1078.002 (Domain Accounts)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'RemoteInteractive (RDP / GUI)',
+      logon_type_code: '10',
+      message: 'Successful remote logon immediately following consecutive brute force failures. Attacker gained interactive console access.',
+      raw_snippet: 'EventID=4624 AccountName=backup_admin SourceIP=192.168.1.55 LogonType=10 ProcessName=C:\\Windows\\System32\\svchost.exe',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(54),
+      event_id: '4672',
+      event_name: 'Special privileges assigned to new logon',
+      category: 'Privilege Escalation',
+      severity: 'High',
+      mitre_tactic: 'Privilege Escalation',
+      mitre_technique: 'T1078 (Privileged Account Abuse)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'RemoteInteractive',
+      logon_type_code: '10',
+      message: 'SeDebugPrivilege and SeSecurityPrivilege assigned to compromised session.',
+      raw_snippet: 'EventID=4672 AccountName=backup_admin Privileges=SeDebugPrivilege SeSecurityPrivilege SeTakeOwnershipPrivilege',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(48),
+      event_id: '4720',
+      event_name: 'A user account was created (Rogue Account)',
+      category: 'Account Management / Persistence',
+      severity: 'Critical',
+      mitre_tactic: 'Persistence',
+      mitre_technique: 'T1136.001 (Local/Domain Account)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'Interactive',
+      logon_type_code: '10',
+      message: 'Attacker created persistent stealth backdoor account named "svc_ghost_sys".',
+      raw_snippet: 'EventID=4720 TargetUserName=svc_ghost_sys SubjectUserName=backup_admin TargetDomain=CORP SAMAccountName=svc_ghost_sys',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(45),
+      event_id: '4738',
+      event_name: 'A user account was modified (Domain Admins Escalation)',
+      category: 'Account Management / Privilege Escalation',
+      severity: 'Critical',
+      mitre_tactic: 'Privilege Escalation',
+      mitre_technique: 'T1098 (Account Manipulation)',
+      username: 'backup_admin',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'Interactive',
+      logon_type_code: '10',
+      message: 'Rogue account "svc_ghost_sys" added to Domain Admins and Enterprise Admins security groups.',
+      raw_snippet: 'EventID=4738 TargetUserName=svc_ghost_sys SubjectUserName=backup_admin SecurityID=S-1-5-21-3979-512',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(35),
+      event_id: '4698',
+      event_name: 'A scheduled task was created (Persistence Backdoor)',
+      category: 'Persistence / Scheduled Task',
+      severity: 'Critical',
+      mitre_tactic: 'Persistence',
+      mitre_technique: 'T1053.005 (Scheduled Task)',
+      username: 'svc_ghost_sys',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'LocalSystem',
+      logon_type_code: '0',
+      message: 'Malicious persistence task "WindowsUpdateHealthMonitor" registered to execute hidden beacon command.',
+      raw_snippet: 'EventID=4698 TaskName=\\Microsoft\\WindowsUpdateHealthMonitor Action=powershell.exe -ExecutionPolicy Bypass -enc SQBFAFgA',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(20),
+      event_id: '4688',
+      event_name: 'A new process has been created (Defense Evasion / Shadow Copy Deletion)',
+      category: 'Execution / Defense Evasion',
+      severity: 'Critical',
+      mitre_tactic: 'Defense Evasion',
+      mitre_technique: 'T1490 (Inhibit System Recovery)',
+      username: 'svc_ghost_sys',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'Elevated Process',
+      logon_type_code: '0',
+      message: 'Executed: vssadmin.exe delete shadows /all /quiet to inhibit system backup recovery before ransomware detonation.',
+      raw_snippet: 'EventID=4688 ProcessName=C:\\Windows\\System32\\vssadmin.exe CommandLine="vssadmin.exe delete shadows /all /quiet" ParentProcess=cmd.exe',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+    {
+      timestamp: formatTime(10),
+      event_id: '1102',
+      event_name: 'The audit log was cleared (Anti-Forensics / Trace Erasure)',
+      category: 'Defense Evasion / Anti-Forensics',
+      severity: 'Critical',
+      mitre_tactic: 'Defense Evasion',
+      mitre_technique: 'T1070.001 (Clear Windows Event Logs)',
+      username: 'svc_ghost_sys',
+      source_ip: '192.168.1.55',
+      computer_name: 'CORP-DC01.corp.local',
+      logon_type: 'Elevated Process',
+      logon_type_code: '0',
+      message: 'Security event log was intentionally cleared by attacker to destroy forensic traces.',
+      raw_snippet: 'EventID=1102 The audit log was cleared SubjectUserName=svc_ghost_sys Domain=CORP ComputerName=CORP-DC01.corp.local',
+      is_real_data: true,
+      cloud_provider: 'Custom Upload (APT29 Scenario)',
+    },
+  ];
+}
+
+/**
+ * Downloads a file to the client browser.
+ */
+function triggerBrowserDownload(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Generates and downloads sample forensic incident log JSON file.
+ */
+export function downloadSampleIncidentJson(): void {
+  const events = getSampleAttackEvents();
+  const jsonStr = JSON.stringify(events, null, 2);
+  triggerBrowserDownload(jsonStr, 'sample_forensic_incident_log.json', 'application/json');
+}
+
+/**
+ * Generates and downloads sample forensic incident log CSV file.
+ */
+export function downloadSampleIncidentCsv(): void {
+  const events = getSampleAttackEvents();
+  const headers = [
+    'timestamp',
+    'event_id',
+    'event_name',
+    'category',
+    'severity',
+    'mitre_tactic',
+    'mitre_technique',
+    'username',
+    'source_ip',
+    'computer_name',
+    'logon_type',
+    'logon_type_code',
+    'message',
+  ];
+
+  const rows = events.map((ev) => [
+    `"${ev.timestamp}"`,
+    `"${ev.event_id}"`,
+    `"${ev.event_name.replace(/"/g, '""')}"`,
+    `"${ev.category.replace(/"/g, '""')}"`,
+    `"${ev.severity}"`,
+    `"${ev.mitre_tactic.replace(/"/g, '""')}"`,
+    `"${ev.mitre_technique.replace(/"/g, '""')}"`,
+    `"${ev.username}"`,
+    `"${ev.source_ip}"`,
+    `"${ev.computer_name}"`,
+    `"${ev.logon_type.replace(/"/g, '""')}"`,
+    `"${ev.logon_type_code}"`,
+    `"${ev.message.replace(/"/g, '""')}"`,
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  triggerBrowserDownload(csvContent, 'sample_forensic_incident_log.csv', 'text/csv;charset=utf-8;');
+}
+
