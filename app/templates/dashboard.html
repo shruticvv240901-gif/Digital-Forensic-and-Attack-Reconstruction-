@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | AI Attack Timeline Reconstruction{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <h2 class="page-title">Forensic Security Operations Dashboard</h2>
+    <p class="page-subtitle">Windows Security Log Analysis & Splunk SPL Ingestion Engine</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <button id="btn-test-splunk" class="btn btn-cyber-outline">
+      <span>⚡ Test Splunk Connection</span>
+    </button>
+  </div>
+</div>
+
+<!-- Diagnostics / Telemetry Overview Cards -->
+<div class="grid-cards">
+  
+  <!-- Splunk Connection Card -->
+  <div class="cyber-card">
+    <div class="card-header">
+      <span class="card-title">🔌 Splunk REST Connector</span>
+      <span id="splunk-status-badge" class="status-pill {% if is_configured %}info{% else %}warning{% endif %}">
+        <span class="badge-pulse"></span>
+        {{ 'Ready to Test' if is_configured else 'Awaiting Config' }}
+      </span>
+    </div>
+    <div class="data-list">
+      <div class="data-row">
+        <span class="data-label">Target Management URL</span>
+        <span class="data-value">{{ config.splunk_base_url }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Authentication Type</span>
+        <span class="data-value">{{ config.auth_type }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Search Index Target</span>
+        <span class="data-value">{{ config.splunk_index }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Connection Latency</span>
+        <span id="splunk-latency-badge" class="data-value">Not checked</span>
+      </div>
+    </div>
+    
+    <!-- Real-time Diagnostics Terminal -->
+    <pre id="connection-output" class="diagnostic-box"></pre>
+  </div>
+
+  <!-- Telemetry Sources Card -->
+  <div class="cyber-card">
+    <div class="card-header">
+      <span class="card-title">📡 Windows Security Log Telemetry</span>
+      <span class="status-pill success">
+        <span class="badge-pulse"></span> Monitored
+      </span>
+    </div>
+    <div class="data-list">
+      <div class="data-row">
+        <span class="data-label">Log Channel</span>
+        <span class="data-value" style="color: var(--cyber-green);">WinEventLog:Security</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Targeted Event IDs</span>
+        <span class="data-value">4624, 4625, 4672, 4720</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Splunk Ingest API</span>
+        <span class="data-value">/services/search/jobs (oneshot)</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Kali Attack VM</span>
+        <span class="data-value" style="color: var(--cyber-amber);">Ready for Scenario Simulation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Mode Card -->
+  <div class="cyber-card">
+    <div class="card-header">
+      <span class="card-title">⚙️ Operational Mode</span>
+      <span class="status-pill {% if demo_mode %}warning{% else %}success{% endif %}" id="operational-mode-pill">
+        {{ 'DEMO / TEST MODE' if demo_mode else 'LIVE SPLUNK' }}
+      </span>
+    </div>
+    <div class="data-list">
+      <div class="data-row">
+        <span class="data-label">Data Origin</span>
+        <span class="data-value" id="data-origin-label">
+          {{ 'Simulated Telemetry' if demo_mode else 'Splunk Enterprise Index' }}
+        </span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Fake Data In Live Mode</span>
+        <span class="data-value" style="color: var(--cyber-cyan);">Strictly Prohibited</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Credential Storage</span>
+        <span class="data-value">.env (Local Environment Only)</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Current Pipeline Stage</span>
+        <span class="data-value" style="color: var(--cyber-green);">Stage 2: Live SPL Ingestion</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interactive Forensic Query & Ingestion Section -->
+<div class="cyber-card" style="margin-bottom: 2rem;">
+  
+  <div class="card-header">
+    <div>
+      <span class="card-title">🔍 Windows Security Event Ingestion & SPL Search</span>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+        Query real-time Windows security authentication, privilege escalation, and account creation logs from Splunk Enterprise.
+      </p>
+    </div>
+  </div>
+
+  <!-- Filter Console -->
+  <div class="filter-console">
+    
+    <div class="filter-group">
+      <label class="filter-label" for="filter-event-id">Windows Event ID</label>
+      <select id="filter-event-id" class="cyber-select">
+        {% for opt in target_event_ids %}
+        <option value="{{ opt.id }}">{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label" for="filter-time-range">Time Range</label>
+      <select id="filter-time-range" class="cyber-select">
+        {% for tr in time_ranges %}
+        <option value="{{ tr.val }}" {% if tr.val == '-24h' %}selected{% endif %}>{{ tr.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group" style="max-width: 140px;">
+      <label class="filter-label" for="filter-limit">Record Limit</label>
+      <select id="filter-limit" class="cyber-select">
+        <option value="25">25 Events</option>
+        <option value="50" selected>50 Events</option>
+        <option value="100">100 Events</option>
+        <option value="200">200 Events</option>
+      </select>
+    </div>
+
+    <div>
+      <button id="btn-fetch-logs" class="btn btn-cyber-primary">
+        <span>🔎 Fetch Logs from Splunk</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Stats & Origin Banner -->
+  <div class="filter-stats-bar">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span id="data-source-badge" class="status-pill {% if demo_mode %}warning{% else %}success{% endif %}">
+        {% if demo_mode %}
+        ⚠️ DEMO MODE: Showing Sample Logs
+        {% else %}
+        🟢 LIVE SPLUNK ENTERPRISE DATA
+        {% endif %}
+      </span>
+      <span id="event-count-display">
+        Loaded <strong><span id="event-count-num">{{ demo_events|length if demo_mode else 0 }}</span></strong> events
+      </span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <span id="query-latency-display">Latency: -- ms</span>
+      <button id="btn-toggle-spl" class="btn btn-cyber-outline btn-sm">
+        <span>Show Generated SPL</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Generated SPL Query Container -->
+  <pre id="spl-query-box" class="diagnostic-box" style="margin-bottom: 1.2rem;"></pre>
+
+  <!-- Error Alert Container -->
+  <div id="query-error-box" class="diagnostic-box" style="border-color: var(--cyber-red); color: #fca5a5; margin-bottom: 1.2rem;"></div>
+
+  <!-- Table of Security Events -->
+  <div class="table-responsive">
+    <table class="cyber-table" id="events-table">
+      <thead>
+        <tr>
+          <th>Timestamp (_time)</th>
+          <th>Event ID & Type</th>
+          <th>User Account</th>
+          <th>Source IP / Host</th>
+          <th>Target Machine</th>
+          <th>Logon Type / MITRE</th>
+          <th>Forensic Narrative</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="events-tbody">
+        {% if demo_mode and demo_events %}
+          {% for event in demo_events %}
+          <tr data-event-index="{{ loop.index0 }}">
+            <td class="cyber-mono">{{ event.timestamp }}</td>
+            <td>
+              <span class="tag-event-code tag-{{ event.event_id }}">{{ event.event_id }}</span>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">{{ event.event_name }}</div>
+            </td>
+            <td>
+              <strong style="color: #ffffff;">{{ event.username }}</strong>
+            </td>
+            <td class="cyber-mono" style="font-size: 0.8rem;">
+              {{ event.source_ip }}
+            </td>
+            <td class="cyber-mono" style="font-size: 0.8rem; color: var(--text-muted);">
+              {{ event.computer_name }}
+            </td>
+            <td>
+              <div><span class="tag-mitre">{{ event.mitre_technique }}</span></div>
+              <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 3px;">{{ event.logon_type }}</div>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--text-muted); max-width: 320px;">
+              {{ event.message }}
+            </td>
+            <td>
+              <button class="btn btn-cyber-outline btn-sm btn-inspect-log" data-raw="{{ event.raw_snippet }}" data-title="Event {{ event.event_id }} - {{ event.event_name }}">
+                Inspect
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr id="empty-row-placeholder">
+            <td colspan="8" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+              <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">📡</div>
+              <h3 style="color: #ffffff; margin-bottom: 0.5rem;">No Events Currently Displayed</h3>
+              <p style="max-width: 550px; margin: 0 auto; font-size: 0.88rem;">
+                Click <strong>"Fetch Logs from Splunk"</strong> above to query live Windows Security logs (4624, 4625, 4672, 4720) directly from your Splunk Enterprise index.
+              </p>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Attack Timeline Reconstruction Section (Stage 3) -->
+<div class="cyber-card" style="margin-bottom: 2rem;" id="timeline-section">
+  
+  <div class="card-header">
+    <div>
+      <span class="card-title">⏳ Automated Attack Timeline Reconstruction</span>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+        Chronological causal correlation mapping multi-stage attack progression (Recon &rarr; Breach &rarr; Escalation &rarr; Persistence).
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <button id="btn-reconstruct-timeline" class="btn btn-cyber-primary">
+        <span>⚡ Reconstruct Attack Timeline</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Incident Correlation Metrics Bar -->
+  <div class="timeline-metrics-grid" id="timeline-metrics">
+    
+    <div class="timeline-metric-card {% if initial_timeline and 'Critical' in initial_timeline.summary.threat_level %}critical{% elif initial_timeline and 'High' in initial_timeline.summary.threat_level %}warning{% else %}success{% endif %}" id="card-metric-threat">
+      <div class="timeline-metric-label">Incident Threat Verdict</div>
+      <div class="timeline-metric-val" id="metric-threat-level" style="font-size: 1.05rem;">
+        {{ initial_timeline.summary.threat_level if initial_timeline else 'Awaiting Analysis' }}
+      </div>
+    </div>
+
+    <div class="timeline-metric-card">
+      <div class="timeline-metric-label">Identified Threat Actor(s)</div>
+      <div class="timeline-metric-val cyber-mono" id="metric-threat-actors" style="font-size: 1rem; color: var(--cyber-cyan);">
+        {% if initial_timeline and initial_timeline.summary.unique_actors %}
+          {{ initial_timeline.summary.unique_actors|join(', ') }}
+        {% else %}
+          None Isolated
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="timeline-metric-card">
+      <div class="timeline-metric-label">Targeted / Created Accounts</div>
+      <div class="timeline-metric-val cyber-mono" id="metric-targeted-accounts" style="font-size: 0.95rem;">
+        {% if initial_timeline and initial_timeline.summary.targeted_accounts %}
+          {{ initial_timeline.summary.targeted_accounts|join(', ') }}
+        {% else %}
+          None
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="timeline-metric-card">
+      <div class="timeline-metric-label">Correlated Timeline Steps</div>
+      <div class="timeline-metric-val cyber-mono" id="metric-step-count" style="color: var(--cyber-green);">
+        {{ initial_timeline.count if initial_timeline else 0 }} Steps
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Timeline Interactive Control Bar -->
+  <div class="timeline-control-bar">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+        Chronological Flow:
+      </span>
+      <div class="btn-group-cyber" id="timeline-order-tabs">
+        <button class="btn-tab active" data-order="asc">Causal Order (Oldest &rarr; Newest)</button>
+        <button class="btn-tab" data-order="desc">Reverse (Newest First)</button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+        Suspicion Filter:
+      </span>
+      <div class="btn-group-cyber" id="timeline-filter-tabs">
+        <button class="btn-tab active" data-filter="all">All Steps</button>
+        <button class="btn-tab" data-filter="threats">Threats Only</button>
+        <button class="btn-tab" data-filter="baseline">Baseline Only</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Flow Track -->
+  <div class="timeline-track" id="timeline-track-container">
+    {% if initial_timeline and initial_timeline.timeline %}
+      {% for item in initial_timeline.timeline %}
+      <div class="timeline-step {% if item.suspicion_level == 'Critical' %}critical{% elif item.suspicion_level == 'High' or item.suspicion_level == 'Suspicious' %}high{% else %}baseline{% endif %}" data-suspicion="{{ item.suspicion_level }}">
+        <div class="timeline-node">{{ loop.index }}</div>
+        
+        <div class="timeline-card">
+          
+          <div class="timeline-card-header">
+            <div class="timeline-tags-left">
+              <span class="cyber-mono" style="font-size: 0.84rem; color: #ffffff; font-weight: 600;">
+                {{ item.timestamp }}
+              </span>
+              <span class="tag-event-code tag-{{ item.event_id }}">{{ item.event_id }}</span>
+              <span style="font-size: 0.82rem; font-weight: 600; color: #ffffff;">{{ item.event_name }}</span>
+              <span class="tag-mitre">{{ item.kill_chain_phase }}</span>
+            </div>
+            <div>
+              <span class="pill-level {% if item.suspicion_level == 'Critical' %}critical{% elif item.suspicion_level == 'High' %}high{% elif item.suspicion_level == 'Suspicious' %}suspicious{% else %}baseline{% endif %}">
+                {{ item.suspicion_level }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Actor to Target Flow Indicator -->
+          <div class="actor-flow-pill">
+            <span style="color: var(--text-muted);">Source / Actor:</span>
+            <strong style="color: var(--cyber-cyan);">{{ item.actor }}</strong>
+            <span class="flow-arrow">&rarr;</span>
+            <span style="color: var(--text-muted);">Target:</span>
+            <strong style="color: #ffffff;">{{ item.target_user }}</strong>
+            <span style="color: var(--text-dim);">@ {{ item.target_host }}</span>
+          </div>
+
+          <!-- Forensic Evidence vs Correlation Hypothesis -->
+          <div class="forensic-blocks-grid">
+            
+            <!-- Confirmed Facts Block -->
+            <div class="forensic-block block-confirmed">
+              <div class="forensic-block-title">
+                <span>🛡️ Confirmed Forensic Evidence (Log Truth)</span>
+              </div>
+              <p>{{ item.confirmed_facts }}</p>
+            </div>
+
+            <!-- Correlation Rationale Block -->
+            <div class="forensic-block block-hypothesis {% if item.suspicion_level == 'Critical' %}critical{% elif item.suspicion_level == 'Informational / Baseline' %}baseline{% endif %}">
+              <div class="forensic-block-title">
+                <span>🔍 Correlation Rationale &amp; Threat Hypothesis</span>
+              </div>
+              <p>{{ item.correlation_reason }}</p>
+            </div>
+
+          </div>
+
+          <!-- Actionable Investigation Checklist -->
+          {% if item.investigation_guidance %}
+          <div class="investigation-guidance-box">
+            <div class="guidance-header">
+              <span>📋 Investigator Action Guidance</span>
+            </div>
+            <div class="guidance-content">{{ item.investigation_guidance }}</div>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div id="timeline-empty-state" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+        <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">⏳</div>
+        <h3 style="color: #ffffff; margin-bottom: 0.5rem;">Timeline Awaiting Event Stream</h3>
+        <p style="max-width: 550px; margin: 0 auto; font-size: 0.88rem;">
+          Click <strong>"Reconstruct Attack Timeline"</strong> or fetch security logs above to generate the chronological causal attack graph.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Forensic Incident Summary & PDF Export Section (Stage 4) -->
+<div class="cyber-card" style="margin-bottom: 2rem;" id="report-summary-section">
+  
+  <div class="card-header">
+    <div>
+      <span class="card-title">📑 Automated Forensic Investigation Summary &amp; PDF Report</span>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+        Synthesized incident narrative, entity attribution, evidence-based findings, and downloadable digital forensic documentation.
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <a id="btn-export-pdf" href="{{ url_for('api.export_pdf') }}" target="_blank" class="btn btn-cyber-green">
+        <span>📥 Export Forensic PDF Report</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Methodology & Provenance Notice -->
+  <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem 1.2rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="status-pill info" style="font-size: 0.74rem;">
+        Engine: Automated Rule-Based Analysis
+      </span>
+      <span style="font-size: 0.82rem; color: var(--text-muted);">
+        Deterministic heuristic correlation &bull; Zero external API dependencies &bull; 100% On-Premises
+      </span>
+    </div>
+    <span class="status-pill {% if demo_mode %}warning{% else %}success{% endif %}" style="font-size: 0.74rem;">
+      {{ 'DEMO DATA (SIMULATED TELEMETRY)' if demo_mode else 'LIVE SPLUNK ENTERPRISE TELEMETRY' }}
+    </span>
+  </div>
+
+  <!-- Executive Assessment Box -->
+  <div style="background: rgba(0, 0, 0, 0.35); border-left: 4px solid var(--cyber-cyan); border-radius: 4px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem;">
+    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cyber-cyan); margin-bottom: 0.4rem;">
+      Executive Incident Overview
+    </div>
+    <p id="summary-exec-text" style="font-size: 0.92rem; line-height: 1.7; color: #f1f5f9;">
+      {{ initial_summary.executive_summary if initial_summary else 'Execute timeline reconstruction to generate automated investigation summary.' }}
+    </p>
+  </div>
+
+  <!-- Two-Column Findings & Recommendations Grid -->
+  <div class="forensic-blocks-grid" style="margin-bottom: 1.5rem;">
+    
+    <!-- Key Observed Findings -->
+    <div class="cyber-card" style="margin-bottom: 0;">
+      <div class="card-header" style="margin-bottom: 0.8rem; padding-bottom: 0.5rem;">
+        <span class="card-title" style="font-size: 0.95rem;">
+          <span>🔍 Key Observed Attack Findings</span>
+        </span>
+        <span class="status-pill warning" id="summary-findings-count" style="font-size: 0.7rem;">
+          {{ initial_summary.key_findings|length if initial_summary else 0 }} Suspicious Steps
+        </span>
+      </div>
+      <div id="summary-findings-list" style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.84rem;">
+        {% if initial_summary and initial_summary.key_findings %}
+          {% for finding in initial_summary.key_findings %}
+          <div style="padding: 0.6rem 0.8rem; background: rgba(0,0,0,0.25); border-left: 3px solid {% if finding.suspicion == 'Critical' %}var(--cyber-red){% else %}var(--cyber-amber){% endif %}; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+              <span class="cyber-mono" style="font-size: 0.75rem; color: var(--text-muted);">Step {{ finding.step }} &bull; {{ finding.timestamp }}</span>
+              <span class="pill-level {% if finding.suspicion == 'Critical' %}critical{% else %}high{% endif %}" style="font-size: 0.68rem; padding: 0.1rem 0.4rem;">{{ finding.suspicion }}</span>
+            </div>
+            <strong style="color: #ffffff;">{{ finding.event_id }} - {{ finding.event_name }}</strong>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 3px;">{{ finding.description }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="color: var(--text-muted);">No suspicious attack sequences detected.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Practical Defensive Recommendations -->
+    <div class="cyber-card" style="margin-bottom: 0;">
+      <div class="card-header" style="margin-bottom: 0.8rem; padding-bottom: 0.5rem;">
+        <span class="card-title" style="font-size: 0.95rem;">
+          <span>🛡️ Defensive Remediation Guidance</span>
+        </span>
+        <span class="status-pill success" style="font-size: 0.7rem;">Investigative Guidance</span>
+      </div>
+      <div id="summary-recs-list" style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.84rem;">
+        {% if initial_summary and initial_summary.recommendations %}
+          {% for rec in initial_summary.recommendations %}
+          <div style="padding: 0.6rem 0.8rem; background: rgba(0,0,0,0.25); border-left: 3px solid var(--cyber-green); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+              <strong style="color: var(--cyber-green);">{{ rec.action }}</strong>
+              <span class="status-pill danger" style="font-size: 0.66rem; padding: 0.1rem 0.4rem;">{{ rec.priority }}</span>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.5;">{{ rec.details }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="color: var(--text-muted);">No remediation actions required for baseline operations.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Forensic Scope & Limitations Notice -->
+  <div style="padding: 0.8rem 1.2rem; background: rgba(0, 0, 0, 0.2); border: 1px dashed var(--border-subtle); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--text-dim); line-height: 1.6;">
+    <strong>Forensic Disclaimer &amp; Limitations:</strong>
+    All conclusions are derived strictly from provided Windows Security event records (4624, 4625, 4672, 4720). Recommendations are investigative response guidance and do not constitute absolute proof that an intrusion achieved complete objective impact.
+  </div>
+
+</div>
+
+<!-- Project Roadmap / Pipeline Tracker -->
+<div class="cyber-card">
+  <div class="card-header">
+    <span class="card-title">🗺️ Project Implementation Roadmap</span>
+    <span class="status-pill success">Stage 3 of 4 Completed &bull; Stage 4 PDF Export Ready</span>
+  </div>
+  <div class="pipeline-steps">
+    
+    <div class="step-card">
+      <div class="step-number" style="color: var(--cyber-green);">✓ Stage 1</div>
+      <div class="step-title">Web App &amp; Splunk Base</div>
+      <div class="step-desc">Flask web server, cybersecurity SOC dark theme, environment configuration, credentials masking.</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number" style="color: var(--cyber-green);">✓ Stage 2</div>
+      <div class="step-title">Live Splunk SPL Ingestion</div>
+      <div class="step-desc">REST API search engine, targeted Windows Security event filters (4624, 4625, 4672, 4720), field normalizer.</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number" style="color: var(--cyber-green);">✓ Stage 3</div>
+      <div class="step-title">Attack Timeline Reconstruction</div>
+      <div class="step-desc">Deterministic causal correlation, multi-stage attack chaining, forensic evidence vs hypothesis separation.</div>
+    </div>
+
+    <div class="step-card active">
+      <div class="step-number" style="color: var(--cyber-cyan);">✓ Stage 4 (Complete)</div>
+      <div class="step-title">AI Summary &amp; PDF Reports</div>
+      <div class="step-desc">Automated forensic incident summary, entity attribution, defensible ReportLab PDF digital forensic export.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Raw Log Inspection Modal -->
+<div id="log-detail-modal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title" style="color: var(--cyber-cyan); font-size: 1.05rem;">Raw Event Telemetry</h3>
+      <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+        Complete raw event record extracted from Splunk Enterprise:
+      </p>
+      <pre id="modal-raw-content" style="white-space: pre-wrap; word-break: break-all; color: #a7f3d0; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 6px; border: 1px solid var(--border-subtle);"></pre>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

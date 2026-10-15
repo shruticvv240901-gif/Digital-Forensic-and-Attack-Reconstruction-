@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Settings & Configuration | AI Attack Timeline Reconstruction{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <h2 class="page-title">System & Splunk Configuration</h2>
+    <p class="page-subtitle">Inspect environment variables and connection parameters safely</p>
+  </div>
+  <div>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-cyber-outline">
+      &larr; Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<div class="grid-cards">
+  
+  <!-- Splunk Settings Inspector -->
+  <div class="cyber-card">
+    <div class="card-header">
+      <span class="card-title">⚙️ Splunk Enterprise Parameters</span>
+      <span class="status-pill {% if config.auth_configured %}success{% else %}warning{% endif %}">
+        {{ 'Configured' if config.auth_configured else 'Credentials Missing' }}
+      </span>
+    </div>
+    
+    <div class="data-list">
+      <div class="data-row">
+        <span class="data-label">SPLUNK_HOST</span>
+        <span class="data-value">{{ config.splunk_host }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_MANAGEMENT_PORT</span>
+        <span class="data-value">{{ config.splunk_port }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_SCHEME</span>
+        <span class="data-value">{{ config.splunk_scheme }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Target REST URL</span>
+        <span class="data-value">{{ config.splunk_base_url }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Authentication Mode</span>
+        <span class="data-value">{{ config.auth_type }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_INDEX</span>
+        <span class="data-value">{{ config.splunk_index }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_SEARCH_MAX_COUNT</span>
+        <span class="data-value">{{ config.search_max_count }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_VERIFY_SSL</span>
+        <span class="data-value">{{ config.verify_ssl }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SPLUNK_TIMEOUT</span>
+        <span class="data-value">{{ config.timeout_seconds }}s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operational Mode Inspector -->
+  <div class="cyber-card">
+    <div class="card-header">
+      <span class="card-title">🧪 Mode & Security Policy</span>
+      <span class="status-pill {% if demo_mode %}warning{% else %}success{% endif %}">
+        {{ 'DEMO_MODE=True' if demo_mode else 'DEMO_MODE=False' }}
+      </span>
+    </div>
+    
+    <div class="data-list">
+      <div class="data-row">
+        <span class="data-label">Active Mode</span>
+        <span class="data-value">{{ 'Simulation / Test' if demo_mode else 'Live Splunk Ingest' }}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Credential Storage</span>
+        <span class="data-value">.env (Local Environment Only)</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Hardcoded Secrets</span>
+        <span class="data-value" style="color: var(--cyber-green);">None (Clean)</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Mock Data Segregation</span>
+        <span class="data-value" style="color: var(--cyber-cyan);">Isolated to Demo Service</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- How to Configure Guide Card -->
+<div class="cyber-card">
+  <div class="card-header">
+    <span class="card-title">📖 How to Configure Splunk Connection</span>
+  </div>
+  <div style="font-size: 0.9rem; line-height: 1.8; color: var(--text-muted);">
+    <p style="margin-bottom: 1rem;">
+      All settings are stored in the <code class="cyber-mono">.env</code> file in your project root. To connect your live Splunk Enterprise instance:
+    </p>
+    <ol style="padding-left: 1.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+      <li>
+        Open the <code class="cyber-mono">.env</code> file in VS Code or any text editor.
+      </li>
+      <li>
+        Set your Splunk administrative credentials:
+        <pre class="diagnostic-box" style="display: block; margin: 0.5rem 0;">SPLUNK_HOST=localhost
+SPLUNK_MANAGEMENT_PORT=8089
+SPLUNK_USERNAME=your_splunk_username
+SPLUNK_PASSWORD=your_splunk_password</pre>
+        <em>Note: Port 8089 is the default Splunk management port for REST API calls (not the web port 8000).</em>
+      </li>
+      <li>
+        When you are ready to switch from demo data to real Splunk data, set:
+        <pre class="diagnostic-box" style="display: block; margin: 0.5rem 0;">DEMO_MODE=False</pre>
+      </li>
+      <li>
+        Restart the Flask application and click <strong>Test Splunk Connection</strong> on the Dashboard.
+      </li>
+    </ol>
+  </div>
+</div>
+{% endblock %}
