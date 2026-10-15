@@ -53,6 +53,12 @@ body {
   flex-direction: column;
 }
 
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 /* --------------------------------------------------------------------------
    Top Navbar & Brand
    -------------------------------------------------------------------------- */
@@ -73,6 +79,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
 }
 
 .brand-icon {
@@ -109,6 +116,9 @@ body {
   padding: 0.4rem 0.8rem;
   border-radius: var(--radius-sm);
   transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .nav-link:hover, .nav-link.active {
@@ -234,7 +244,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Filter Console & Selects (Stage 2)
+   Filter Console & Selects
    -------------------------------------------------------------------------- */
 .filter-console {
   background: rgba(15, 23, 42, 0.7);
@@ -510,6 +520,7 @@ body {
 .tag-4625 { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
 .tag-4672 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
 .tag-4720 { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+.tag-default { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
 
 /* --------------------------------------------------------------------------
    Roadmap / Pipeline Tracker
@@ -567,14 +578,12 @@ body {
   font-size: 0.82rem;
   white-space: pre-wrap;
   word-break: break-all;
-  display: none;
 }
 
 /* --------------------------------------------------------------------------
    Raw Log Detail Modal
    -------------------------------------------------------------------------- */
 .modal-overlay {
-  display: none;
   position: fixed;
   top: 0;
   left: 0;
@@ -583,6 +592,7 @@ body {
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(5px);
   z-index: 200;
+  display: flex;
   justify-content: center;
   align-items: center;
   padding: 1.5rem;
@@ -977,4 +987,6 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
